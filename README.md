@@ -43,7 +43,7 @@ The following shows the output when accessing the available endpoints:
 
     ```bash
     $ curl http://127.0.0.1:8000/metadata -s
-    {"version":"0.1.0","description":"Web application with hello world, health, and metadata endpoints","last_commit_sha":"8963ec86d5b4e4b00a3b93f81c8f939c6993e1a9"}
+    {"version":"0.1.0","description":"Web application with hello world, health, and metadata endpoints","last_commit_sha":"0fa014cfaacabadfd8758ed70d59af5d76f33a88"}
     ```
 
     Formatted:
@@ -52,7 +52,7 @@ The following shows the output when accessing the available endpoints:
     {
       "version": "0.1.0",
       "description": "Web application with hello world, health, and metadata endpoints",
-      "last_commit_sha": "8963ec86d5b4e4b00a3b93f81c8f939c6993e1a9"
+      "last_commit_sha": "0fa014cfaacabadfd8758ed70d59af5d76f33a88"
     }
     ```
 
