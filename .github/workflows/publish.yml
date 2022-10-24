@@ -1,0 +1,131 @@
+on:
+  push: { tags: ['[0-9]+.[0-9]+.[0-9]+'] }
+
+name: Publish
+
+jobs:
+  prepare_artifacts_linux:
+    name: Prepare Artifacts (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build Application
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Package Artifacts
+        run: scripts/publish_prepare_app.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-x86_64
+          path: target/publish
+
+  prepare_artifacts_windows:
+    name: Prepare Artifacts (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prepare symlink configuration
+        run: git config --global core.symlinks true
+
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Build Application
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+
+      - name: Package Artifacts
+        run: powershell -File .\scripts\publish_prepare_app.ps1
+        shell: powershell
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-x86_64
+          path: target/publish
+
+  # We only want to release when both linux and windows artifacts are successfully uploaded.
+  github_release:
+    name: GitHub Release
+    needs:
+      - prepare_artifacts_linux
+      - prepare_artifacts_windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Zip
+        run: sudo apt install zip
+
+      - name: Retrieve Artifacts (Linux)
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-x86_64
+          path: target/publish/linux
+
+      # Uploading artifacts makes it lose permissions, so we have to re-mark the binary as executable.
+      # https://github.com/actions/upload-artifact/issues/38
+      - name: Mark Application Executable
+        working-directory: target/publish/linux
+        run: chmod +x ./web_app/web_app
+
+      - name: Compress Artifacts (Linux)
+        working-directory: target/publish/linux
+        run: tar cfpz web_app.tar.gz web_app
+
+      - name: Retrieve Artifacts (Windows)
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-x86_64
+          path: target/publish/windows
+
+      - name: Compress Artifacts (Windows)
+        working-directory: ./target/publish/windows
+        run: zip -qq -r web_app.zip ./web_app
+
+      - id: create_release
+        name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: Please see `README.md` for the current capabilities of the application.
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset (Linux)
+        id: upload_release_asset_linux
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            ./target/publish/linux/web_app.tar.gz
+
+      - name: Upload Release Asset (Windows)
+        id: upload_release_asset_windows
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            ./target/publish/windows/web_app.zip
