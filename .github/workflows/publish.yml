@@ -88,7 +88,7 @@ jobs:
 
       - name: Compress Artifacts (Linux)
         working-directory: target/publish/linux
-        run: tar cfpz web_app.tar.gz web_app
+        run: tar cfp web_app.tar web_app
 
       - name: Retrieve Artifacts (Windows)
         uses: actions/download-artifact@v3
@@ -119,7 +119,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            ./target/publish/linux/web_app.tar.gz
+            ./target/publish/linux/web_app.tar
 
       - name: Upload Release Asset (Windows)
         id: upload_release_asset_windows
